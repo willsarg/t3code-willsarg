@@ -49,10 +49,15 @@ import { ensureLocalApi, readLocalApi } from "../../localApi";
 import { useShallow } from "zustand/react/shallow";
 import {
   selectProjectsAcrossEnvironments,
+  selectThreadsAcrossEnvironments,
   selectThreadShellsAcrossEnvironments,
   useStore,
 } from "../../store";
 import { formatRelativeTime, formatRelativeTimeLabel } from "../../timestampFormat";
+import {
+  deriveLatestProviderUsageByProvider,
+  type ProviderUsageSnapshot,
+} from "../../lib/providerUsage";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -166,6 +171,8 @@ const PROVIDER_STATUS_STYLES = {
   },
 } as const;
 
+const PROVIDERS_WITH_LIVE_USAGE_EVENTS = new Set<ProviderKind>(["codex", "claudeAgent"]);
+
 function getProviderSummary(provider: ServerProvider | undefined) {
   if (!provider) {
     return {
@@ -242,6 +249,91 @@ function ProviderLastChecked({ lastCheckedAt }: { lastCheckedAt: string | null }
         <>Checked {lastCheckedRelative.value}</>
       )}
     </span>
+  );
+}
+
+function getProviderStatusLabel(provider: ServerProvider | undefined): string {
+  if (!provider) {
+    return "Checking";
+  }
+  switch (provider.status) {
+    case "ready":
+      return "Ready";
+    case "warning":
+      return "Needs attention";
+    case "error":
+      return "Unavailable";
+    case "disabled":
+      return "Disabled";
+  }
+}
+
+function getProviderAuthSummary(provider: ServerProvider | undefined): string {
+  if (!provider) {
+    return "Pending";
+  }
+  if (provider.auth.status === "authenticated") {
+    return provider.auth.label ?? provider.auth.type ?? "Authenticated";
+  }
+  if (provider.auth.status === "unauthenticated") {
+    return "Not authenticated";
+  }
+  return "Unknown";
+}
+
+function sortUsageWindows(windows: ReadonlyArray<ProviderUsageSnapshot["windows"][number]>) {
+  return windows.toSorted((left, right) => {
+    const leftRank = left.label.startsWith("Session") ? 0 : 1;
+    const rightRank = right.label.startsWith("Session") ? 0 : 1;
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+    return left.label.localeCompare(right.label);
+  });
+}
+
+function formatUsageWindowSummary(window: ProviderUsageSnapshot["windows"][number]): string {
+  const resetLabel =
+    window.resetsAt !== null
+      ? formatRelativeTimeLabel(new Date(window.resetsAt * 1000).toISOString())
+      : null;
+  return resetLabel
+    ? `${window.label}: ${Math.round(window.usedPercent)}% · resets ${resetLabel}`
+    : `${window.label}: ${Math.round(window.usedPercent)}%`;
+}
+
+function getProviderUsageSummary(
+  provider: ProviderKind,
+  usageSnapshot: ProviderUsageSnapshot | undefined,
+): { title: string; lines: string[] } {
+  if (usageSnapshot) {
+    return {
+      title: "Last known usage",
+      lines: sortUsageWindows(usageSnapshot.windows).map(formatUsageWindowSummary),
+    };
+  }
+
+  if (PROVIDERS_WITH_LIVE_USAGE_EVENTS.has(provider)) {
+    return {
+      title: "Usage",
+      lines: ["No live quota data yet. Start a turn with this provider to populate limits."],
+    };
+  }
+
+  return {
+    title: "Usage",
+    lines: ["This provider does not publish live quota data to T3 Code yet."],
+  };
+}
+
+function ProviderOverviewStat(props: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+        {props.label}
+      </div>
+      <div className="mt-1 text-sm font-medium text-foreground">{props.value}</div>
+    </div>
   );
 }
 
@@ -600,6 +692,7 @@ export function GeneralSettingsPanel() {
   const availableEditors = useServerAvailableEditors();
   const observability = useServerObservability();
   const serverProviders = useServerProviders();
+  const threads = useStore(useShallow(selectThreadsAcrossEnvironments));
   const visibleProviderSettings = PROVIDER_SETTINGS.filter(
     (providerSettings) =>
       providerSettings.provider !== "cursor" ||
@@ -811,6 +904,26 @@ export function GeneralSettingsPanel() {
       versionLabel: getProviderVersionLabel(liveProvider?.version),
     };
   });
+
+  const latestProviderUsageByProvider = useMemo(
+    () => deriveLatestProviderUsageByProvider(threads.map((thread) => thread.activities)),
+    [threads],
+  );
+
+  const providerOverviewStats = useMemo(() => {
+    const total = providerCards.length;
+    const ready = providerCards.filter(
+      (provider) => provider.liveProvider?.status === "ready",
+    ).length;
+    const authenticated = providerCards.filter(
+      (provider) => provider.liveProvider?.auth.status === "authenticated",
+    ).length;
+    const liveUsage = providerCards.filter(
+      (provider) => latestProviderUsageByProvider[provider.provider] !== undefined,
+    ).length;
+
+    return { total, ready, authenticated, liveUsage };
+  }, [latestProviderUsageByProvider, providerCards]);
 
   const lastCheckedAt =
     serverProviders.length > 0
@@ -1197,6 +1310,106 @@ export function GeneralSettingsPanel() {
           </div>
         }
       >
+        <div className="border-b border-border/60 px-4 py-4 sm:px-5">
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-foreground">Overview</h3>
+              <p className="text-xs text-muted-foreground">
+                Installed providers, authentication and subscription state, and the latest live
+                quota data T3 Code has seen.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <ProviderOverviewStat
+                label="Providers"
+                value={`${providerOverviewStats.total} configured`}
+              />
+              <ProviderOverviewStat
+                label="Ready"
+                value={`${providerOverviewStats.ready}/${providerOverviewStats.total}`}
+              />
+              <ProviderOverviewStat
+                label="Authenticated"
+                value={`${providerOverviewStats.authenticated}/${providerOverviewStats.total}`}
+              />
+              <ProviderOverviewStat
+                label="Live usage"
+                value={`${providerOverviewStats.liveUsage}/${providerOverviewStats.total}`}
+              />
+            </div>
+
+            <div className="grid gap-2 lg:grid-cols-2">
+              {providerCards.map((providerCard) => {
+                const usageSnapshot = latestProviderUsageByProvider[providerCard.provider];
+                const usageSummary = getProviderUsageSummary(providerCard.provider, usageSnapshot);
+                const providerDisplayName =
+                  providerCard.liveProvider?.displayName?.trim() ||
+                  providerCard.title ||
+                  formatProviderKindLabel(providerCard.provider);
+
+                return (
+                  <div
+                    key={`${providerCard.provider}-overview`}
+                    className="rounded-lg border border-border/70 bg-background/70 px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "mt-0.5 size-2 shrink-0 rounded-full",
+                              providerCard.statusStyle.dot,
+                            )}
+                          />
+                          <div className="truncate text-sm font-medium text-foreground">
+                            {providerDisplayName}
+                          </div>
+                          {providerCard.versionLabel ? (
+                            <code className="shrink-0 text-[11px] text-muted-foreground">
+                              {providerCard.versionLabel}
+                            </code>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {providerCard.summary.headline}
+                        </div>
+                      </div>
+                      <Badge variant="secondary" size="sm" className="shrink-0">
+                        {getProviderStatusLabel(providerCard.liveProvider)}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-3 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+                      <div className="flex items-center justify-between gap-3 rounded-md bg-muted/20 px-2 py-1.5">
+                        <span>Auth</span>
+                        <span className="truncate text-right text-foreground/90">
+                          {getProviderAuthSummary(providerCard.liveProvider)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-md bg-muted/20 px-2 py-1.5">
+                        <span>Models</span>
+                        <span className="text-foreground/90">{providerCard.models.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-md border border-border/60 bg-muted/10 px-2.5 py-2">
+                      <div className="text-[11px] font-medium text-foreground">
+                        {usageSummary.title}
+                      </div>
+                      <div className="mt-1 space-y-1 text-[11px] text-muted-foreground">
+                        {usageSummary.lines.map((line) => (
+                          <div key={line}>{line}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         {providerCards.map((providerCard) => {
           const customModelInput = customModelInputByProvider[providerCard.provider];
           const customModelError = customModelErrorByProvider[providerCard.provider] ?? null;

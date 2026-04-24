@@ -1,4 +1,4 @@
-import type { OrchestrationThreadActivity } from "@t3tools/contracts";
+import type { OrchestrationThreadActivity, ProviderKind } from "@t3tools/contracts";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
@@ -12,10 +12,6 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function asBoolean(value: unknown): boolean | null {
-  return typeof value === "boolean" ? value : null;
-}
-
 export interface RateLimitWindow {
   /** Label for this window, e.g. "Session (5 hrs)" or "Weekly" */
   readonly label: string;
@@ -26,6 +22,8 @@ export interface RateLimitWindow {
 }
 
 export interface ProviderUsageSnapshot {
+  /** Canonical provider id */
+  readonly provider: ProviderKind;
   /** The provider name to show in the tooltip header */
   readonly providerLabel: string;
   /** Rate limit windows (e.g. session + weekly) */
@@ -111,6 +109,7 @@ function normalizeClaudeRateLimitEvent(
     statusRaw === "rejected" ? "rejected" : statusRaw === "allowed_warning" ? "warning" : "ok";
 
   return {
+    provider: "claudeAgent",
     providerLabel: "Claude",
     windows,
     status,
@@ -198,6 +197,7 @@ function normalizeCodexRateLimits(
     maxPercent >= 100 ? "rejected" : maxPercent >= 80 ? "warning" : "ok";
 
   return {
+    provider: "codex",
     providerLabel: "Codex",
     windows,
     status,
@@ -260,6 +260,7 @@ export function deriveLatestProviderUsageSnapshot(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): ProviderUsageSnapshot | null {
   const windowsByLabel = new Map<string, RateLimitWindow>();
+  let provider: ProviderKind | null = null;
   let providerLabel: string | null = null;
   let latestStatus: ProviderUsageSnapshot["status"] = "ok";
   let latestUpdatedAt: string | null = null;
@@ -277,13 +278,14 @@ export function deriveLatestProviderUsageSnapshot(
     }
 
     if (providerLabel === null) {
+      provider = result.provider;
       providerLabel = result.providerLabel;
       latestStatus = result.status;
       latestUpdatedAt = activity.createdAt;
     }
 
     // Only merge events from the same provider.
-    if (result.providerLabel !== providerLabel) {
+    if (result.provider !== provider || result.providerLabel !== providerLabel) {
       continue;
     }
 
@@ -301,14 +303,40 @@ export function deriveLatestProviderUsageSnapshot(
     }
   }
 
-  if (providerLabel === null || windowsByLabel.size === 0 || latestUpdatedAt === null) {
+  if (
+    provider === null ||
+    providerLabel === null ||
+    windowsByLabel.size === 0 ||
+    latestUpdatedAt === null
+  ) {
     return null;
   }
 
   return {
+    provider,
     providerLabel,
     windows: Array.from(windowsByLabel.values()),
     status: latestStatus,
     updatedAt: latestUpdatedAt,
   };
+}
+
+export function deriveLatestProviderUsageByProvider(
+  activityGroups: ReadonlyArray<ReadonlyArray<OrchestrationThreadActivity>>,
+): Partial<Record<ProviderKind, ProviderUsageSnapshot>> {
+  const latestByProvider: Partial<Record<ProviderKind, ProviderUsageSnapshot>> = {};
+
+  for (const activities of activityGroups) {
+    const snapshot = deriveLatestProviderUsageSnapshot(activities);
+    if (!snapshot) {
+      continue;
+    }
+
+    const existing = latestByProvider[snapshot.provider];
+    if (!existing || snapshot.updatedAt > existing.updatedAt) {
+      latestByProvider[snapshot.provider] = snapshot;
+    }
+  }
+
+  return latestByProvider;
 }
