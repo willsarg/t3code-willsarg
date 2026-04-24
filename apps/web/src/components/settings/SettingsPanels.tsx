@@ -307,6 +307,7 @@ function getProviderUsageSummary(
   usageSnapshot: ProviderUsageSnapshot | undefined,
 ): { title: string; lines: string[] } {
   const snapshotUsageLimits = provider?.usageLimits;
+  const snapshotUsageSummary = provider?.usageSummary;
   if (snapshotUsageLimits?.available && snapshotUsageLimits.windows.length > 0) {
     return {
       title: "Current usage",
@@ -317,6 +318,13 @@ function getProviderUsageSummary(
           resetsAt: window.resetsAt ? Date.parse(window.resetsAt) / 1000 : null,
         }),
       ),
+    };
+  }
+
+  if (snapshotUsageSummary && snapshotUsageSummary.lines.length > 0) {
+    return {
+      title: snapshotUsageSummary.title,
+      lines: [...snapshotUsageSummary.lines],
     };
   }
 
@@ -942,6 +950,7 @@ export function GeneralSettingsPanel() {
     const liveUsage = providerCards.filter(
       (provider) =>
         provider.liveProvider?.usageLimits?.available ||
+        provider.liveProvider?.usageSummary !== undefined ||
         latestProviderUsageByProvider[provider.provider] !== undefined,
     ).length;
 

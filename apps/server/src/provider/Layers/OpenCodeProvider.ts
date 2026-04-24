@@ -27,6 +27,7 @@ import {
 import type { Agent, ProviderListResponse } from "@opencode-ai/sdk/v2";
 import { resolveOpenCodeManagedUsageLimits } from "../openCodeUsageLimits.ts";
 import { makeUnavailableUsageLimits } from "../providerUsageLimits.ts";
+import { loadOpenCodeUsageSummary } from "../openCodeStats.ts";
 
 const PROVIDER = "opencode" as const;
 const OPENCODE_PRESENTATION = {
@@ -34,6 +35,8 @@ const OPENCODE_PRESENTATION = {
   showInteractionModeToggle: false,
 } as const;
 const MINIMUM_OPENCODE_VERSION = "1.14.19";
+const OPENCODE_QUOTA_UNAVAILABLE_REASON =
+  "OpenCode does not expose live account quota windows for these providers.";
 
 class OpenCodeProbeError extends Data.TaggedError("OpenCodeProbeError")<{
   readonly cause: unknown;
@@ -264,7 +267,7 @@ const makePendingOpenCodeProvider = (openCodeSettings: OpenCodeSettings): Server
   const usageLimits = makeUnavailableUsageLimits({
     source: "opencodeManaged",
     checkedAt,
-    reason: "Unable to fetch usage",
+    reason: OPENCODE_QUOTA_UNAVAILABLE_REASON,
   });
 
   if (!openCodeSettings.enabled) {
@@ -345,7 +348,7 @@ export const OpenCodeProviderLive = Layer.effect(
             usageLimits: makeUnavailableUsageLimits({
               source: "opencodeManaged",
               checkedAt,
-              reason: "Unable to fetch usage",
+              reason: OPENCODE_QUOTA_UNAVAILABLE_REASON,
             }),
             message: failure.message,
           },
@@ -372,7 +375,7 @@ export const OpenCodeProviderLive = Layer.effect(
             usageLimits: makeUnavailableUsageLimits({
               source: "opencodeManaged",
               checkedAt,
-              reason: "Unable to fetch usage",
+              reason: OPENCODE_QUOTA_UNAVAILABLE_REASON,
             }),
             message: isExternalServer
               ? "OpenCode is disabled in T3 Code settings. A server URL is configured."
@@ -429,7 +432,7 @@ export const OpenCodeProviderLive = Layer.effect(
               usageLimits: makeUnavailableUsageLimits({
                 source: "opencodeManaged",
                 checkedAt,
-                reason: "Unable to fetch usage",
+                reason: OPENCODE_QUOTA_UNAVAILABLE_REASON,
               }),
               message: `OpenCode v${version} is too old. Upgrade to v${MINIMUM_OPENCODE_VERSION} or newer.`,
             },
@@ -488,8 +491,26 @@ export const OpenCodeProviderLive = Layer.effect(
         makeUnavailableUsageLimits({
           source: "opencodeManaged",
           checkedAt,
-          reason: "Unable to fetch usage",
+          reason: OPENCODE_QUOTA_UNAVAILABLE_REASON,
         });
+      const usageSummary = isExternalServer
+        ? undefined
+        : yield* loadOpenCodeUsageSummary({
+            checkedAt,
+            runSqliteCommand: (args) =>
+              openCodeRuntime
+                .runOpenCodeCommand({
+                  binaryPath: "sqlite3",
+                  args,
+                })
+                .pipe(
+                  Effect.orElseSucceed(() => ({
+                    stdout: "",
+                    stderr: "",
+                    code: 1,
+                  })),
+                ),
+          });
       const connectedCount = inventoryExit.value.providerList.connected.length;
       const connectedManagedCount = inventoryExit.value.providerList.connected.filter(
         (providerId) => providerId === "opencode-go" || providerId === "opencode-zen",
@@ -509,6 +530,7 @@ export const OpenCodeProviderLive = Layer.effect(
             type: "opencode",
           },
           usageLimits,
+          ...(usageSummary ? { usageSummary } : {}),
           message:
             connectedManagedCount > 0
               ? `${connectedManagedCount} OpenCode-managed provider${connectedManagedCount === 1 ? "" : "s"} connected through ${isExternalServer ? "the configured OpenCode server" : "OpenCode"}.`

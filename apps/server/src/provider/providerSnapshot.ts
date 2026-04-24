@@ -5,6 +5,7 @@ import type {
   ServerProviderSkill,
   ServerProviderSlashCommand,
   ServerProviderUsageLimits,
+  ServerProviderUsageSummary,
   ServerProviderModel,
   ServerProviderState,
 } from "@t3tools/contracts";
@@ -30,6 +31,7 @@ export interface ProviderProbeResult {
   readonly auth: ServerProviderAuth;
   readonly message?: string;
   readonly usageLimits?: ServerProviderUsageLimits;
+  readonly usageSummary?: ServerProviderUsageSummary;
 }
 
 export interface ServerProviderPresentation {
@@ -208,6 +210,7 @@ export function buildServerProvider(input: {
     slashCommands: [...(input.slashCommands ?? [])],
     skills: [...(input.skills ?? [])],
     ...(input.probe.usageLimits ? { usageLimits: input.probe.usageLimits } : {}),
+    ...(input.probe.usageSummary ? { usageSummary: input.probe.usageSummary } : {}),
   };
 }
 

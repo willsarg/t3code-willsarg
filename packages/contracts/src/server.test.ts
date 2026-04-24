@@ -57,4 +57,30 @@ describe("ServerProvider", () => {
     expect(parsed.usageLimits?.available).toBe(true);
     expect(parsed.usageLimits?.windows).toHaveLength(1);
   });
+
+  it("decodes optional provider usage summaries", () => {
+    const parsed = decodeServerProvider({
+      provider: "opencode",
+      displayName: "OpenCode",
+      enabled: true,
+      installed: true,
+      version: "1.14.24",
+      status: "ready",
+      auth: {
+        status: "authenticated",
+        type: "opencode",
+      },
+      checkedAt: "2026-04-24T00:00:00.000Z",
+      models: [],
+      usageSummary: {
+        source: "opencodeLocalStats",
+        title: "OpenCode stats (7d)",
+        checkedAt: "2026-04-24T00:00:00.000Z",
+        lines: ["7d cost: $24.10", "7d activity: 959 messages across 13 sessions"],
+      },
+    });
+
+    expect(parsed.usageSummary?.source).toBe("opencodeLocalStats");
+    expect(parsed.usageSummary?.lines).toHaveLength(2);
+  });
 });

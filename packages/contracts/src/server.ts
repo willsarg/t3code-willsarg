@@ -105,6 +105,14 @@ export const ServerProviderUsageLimits = Schema.Struct({
 });
 export type ServerProviderUsageLimits = typeof ServerProviderUsageLimits.Type;
 
+export const ServerProviderUsageSummary = Schema.Struct({
+  source: Schema.Literals(["opencodeLocalStats"]),
+  title: TrimmedNonEmptyString,
+  lines: Schema.Array(TrimmedNonEmptyString),
+  checkedAt: IsoDateTime,
+});
+export type ServerProviderUsageSummary = typeof ServerProviderUsageSummary.Type;
+
 export const ServerProvider = Schema.Struct({
   provider: ProviderKind,
   displayName: Schema.optional(TrimmedNonEmptyString),
@@ -123,6 +131,7 @@ export const ServerProvider = Schema.Struct({
   ),
   skills: Schema.Array(ServerProviderSkill).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
   usageLimits: Schema.optional(ServerProviderUsageLimits),
+  usageSummary: Schema.optional(ServerProviderUsageSummary),
 });
 export type ServerProvider = typeof ServerProvider.Type;
 
