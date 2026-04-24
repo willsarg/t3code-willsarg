@@ -127,5 +127,5 @@ If `bun` is still missing after install, open a new shell or verify your shell `
 For a clean agent session, this prompt is sufficient:
 
 ```text
-Work in /Users/will/Documents/Github/willsarg/t3code-willsarg. Follow AGENTS.md, docs/dev-bootstrap.md, and docs/willsarg-fork-workflow.md before making changes.
+Work in this repository. Follow AGENTS.md, docs/dev-bootstrap.md, and docs/willsarg-fork-workflow.md before making changes.
 ```
