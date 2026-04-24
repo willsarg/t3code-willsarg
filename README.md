@@ -47,6 +47,14 @@ We are not accepting contributions yet.
 
 Observability guide: [docs/observability.md](./docs/observability.md)
 
+## Fork Notes
+
+If you are working in Will's fork locally, read these first:
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/willsarg-fork-workflow.md](./docs/willsarg-fork-workflow.md)
+- [docs/fork-roadmap.md](./docs/fork-roadmap.md)
+
 ## If you REALLY want to contribute still.... read this first
 
 Before local development, prepare the environment and install dependencies:

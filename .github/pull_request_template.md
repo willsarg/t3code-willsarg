@@ -19,6 +19,14 @@ we may close it without merging it, or never review it.
 
 <!-- Explain the problem being solved and why this approach is the right one. -->
 
+## Classification
+
+<!-- Pick one and explain briefly if useful. -->
+
+- [ ] Will-specific fork work
+- [ ] Upstreamable fix
+- [ ] Mixed: fork work plus an upstreamable slice
+
 ## UI Changes
 
 <!-- If this PR changes UI, include clear before/after screenshots.
@@ -29,5 +37,7 @@ we may close it without merging it, or never review it.
 
 - [ ] This PR is small and focused
 - [ ] I explained what changed and why
+- [ ] I kept branding, provider, and core protocol changes separated when practical
+- [ ] I considered whether this could be a small patch on top of upstream
 - [ ] I included before/after screenshots for any UI changes
 - [ ] I included a video for animation/interaction changes

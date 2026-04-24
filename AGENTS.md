@@ -1,15 +1,40 @@
 # AGENTS.md
 
+## Will Fork Workflow
+
+This repository is Will's fork of `pingdotgg/t3code`.
+
+Primary goal: make meaningful product improvements without drifting so far from upstream that upstream updates become painful.
+
+Branch policy:
+
+- `main` is the upstream-sync branch. Treat it as the clean mirror lane.
+- `dev` is Will's integration branch and the default branch for ongoing fork work.
+- `feat/*` branches are for task-specific work and should branch from `dev`.
+- Never do feature work directly on `main`.
+- If you start a session on `main`, stop and switch to `dev` or a new `feat/*` branch before making edits.
+
+First steps for every non-trivial task:
+
+1. Run `git status -sb`.
+2. Run `git branch --show-current`.
+3. Read this file and `docs/willsarg-fork-workflow.md`.
+4. Read only the files relevant to the task before editing.
+5. Prefer a new `feat/*` branch from `dev` for substantial work.
+
 ## Task Completion Requirements
 
 - All of `bun fmt`, `bun lint`, and `bun typecheck` must pass before considering tasks completed.
 - NEVER run `bun test`. Always use `bun run test` (runs Vitest).
+- If behavior changed in a targeted area, run the narrowest relevant verification in addition to the root checks above.
 
 ## Project Snapshot
 
 T3 Code is a minimal web GUI for using coding agents like Codex and Claude.
 
 This repository is a VERY EARLY WIP. Proposing sweeping changes that improve long-term maintainability is encouraged.
+
+For Will's fork, prefer additive changes over sweeping rewrites unless the rewrite is clearly worth the future merge cost.
 
 ## Core Priorities
 
@@ -22,6 +47,14 @@ If a tradeoff is required, choose correctness and robustness over short-term con
 ## Maintainability
 
 Long term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+
+Fork-specific maintainability rules:
+
+- Keep branding changes isolated from behavioral changes when practical.
+- Keep provider changes isolated from UI changes when practical.
+- Avoid broad renames, mass moves, or style-only churn unless there is a strong reason.
+- Before making a structural change, ask: "Can this be implemented as a small patch on top of upstream?" If yes, do that.
+- If a change could plausibly be sent upstream, keep that slice small and separate from Will-specific fork behavior.
 
 ## Package Roles
 
@@ -51,3 +84,9 @@ Docs:
 - Codex-Monitor (Tauri, feature-complete, strong reference implementation): https://github.com/Dimillian/CodexMonitor
 
 Use these as implementation references when designing protocol handling, UX flows, and operational safeguards.
+
+## Fork References
+
+- Upstream repo: https://github.com/pingdotgg/t3code
+- Fork workflow: `docs/willsarg-fork-workflow.md`
+- Upstream is most likely to accept small, focused bug, reliability, and performance fixes. Keep that in mind when structuring changes.
