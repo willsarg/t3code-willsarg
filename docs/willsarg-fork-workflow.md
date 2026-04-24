@@ -9,6 +9,8 @@ The default strategy is:
 - keep `main` clean
 - do active work on `dev`
 - do task work on `feat/*`
+- merge finished `feat/*` work back into `dev` immediately
+- delete merged `feat/*` branches locally and on origin
 - keep Will-specific product work separate from potentially upstreamable fixes
 
 ## Branch Model
@@ -48,7 +50,17 @@ git commit -m "feat(...): ..."
 git push -u origin feat/<short-name>
 ```
 
-Open a PR into `dev` if you want a reviewable history, even for solo work.
+Then close the branch out cleanly:
+
+```bash
+git checkout dev
+git merge --ff-only feat/<short-name>
+git push origin dev
+git branch -d feat/<short-name>
+git push origin --delete feat/<short-name>
+```
+
+Open a PR into `dev` only if you specifically want a reviewable checkpoint. The default preference for this fork is: small scoped branch, verify it, merge into `dev`, delete it.
 
 ## Sync Upstream
 
@@ -92,7 +104,7 @@ If part of a change is generic and could reasonably go upstream:
 For a fresh coding session, this should be enough:
 
 ```text
-Work in this repository and follow AGENTS.md, docs/dev-bootstrap.md, and docs/willsarg-fork-workflow.md before making changes.
+Work in this repository and follow AGENTS.md, docs/dev-bootstrap.md, and docs/willsarg-fork-workflow.md before making changes. Keep branches and commits tightly scoped, merge finished work into dev, and delete merged feature branches.
 ```
 
 ## Decision Rule

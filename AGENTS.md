@@ -11,6 +11,7 @@ Branch policy:
 - `main` is the upstream-sync branch. Treat it as the clean mirror lane.
 - `dev` is Will's integration branch and the default branch for ongoing fork work.
 - `feat/*` branches are for task-specific work and should branch from `dev`.
+- `feat/*` branches are temporary. When a scoped task is complete and verified, merge it into `dev` and delete the branch locally and on origin.
 - Never do feature work directly on `main`.
 - If you start a session on `main`, stop and switch to `dev` or a new `feat/*` branch before making edits.
 
@@ -22,6 +23,13 @@ First steps for every non-trivial task:
 4. Read only the files relevant to the task before editing.
 5. Prefer a new `feat/*` branch from `dev` for substantial work.
 6. If `bun` or `node` are missing, read `docs/dev-bootstrap.md` before trying to install dependencies or run checks.
+
+Branch lifecycle rule:
+
+- Keep only one active task branch per feature set unless parallel work is clearly justified.
+- Do not leave finished work sitting on `feat/*` branches after verification.
+- Once a scoped branch is done, fast-forward merge it into `dev`, push `dev`, then delete the feature branch locally and on origin.
+- If a task is small enough to do directly on `dev`, keep the commit narrowly scoped and do not create a throwaway branch.
 
 ## Task Completion Requirements
 
