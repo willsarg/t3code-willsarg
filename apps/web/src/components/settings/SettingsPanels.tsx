@@ -303,9 +303,30 @@ function formatUsageWindowSummary(window: ProviderUsageSnapshot["windows"][numbe
 }
 
 function getProviderUsageSummary(
-  provider: ProviderKind,
+  provider: ServerProvider | undefined,
   usageSnapshot: ProviderUsageSnapshot | undefined,
 ): { title: string; lines: string[] } {
+  const snapshotUsageLimits = provider?.usageLimits;
+  if (snapshotUsageLimits?.available && snapshotUsageLimits.windows.length > 0) {
+    return {
+      title: "Current usage",
+      lines: snapshotUsageLimits.windows.map((window) =>
+        formatUsageWindowSummary({
+          label: window.label,
+          usedPercent: window.usedPercent,
+          resetsAt: window.resetsAt ? Date.parse(window.resetsAt) / 1000 : null,
+        }),
+      ),
+    };
+  }
+
+  if (snapshotUsageLimits && !snapshotUsageLimits.available && snapshotUsageLimits.reason) {
+    return {
+      title: "Usage",
+      lines: [snapshotUsageLimits.reason],
+    };
+  }
+
   if (usageSnapshot) {
     return {
       title: "Last known usage",
@@ -313,7 +334,7 @@ function getProviderUsageSummary(
     };
   }
 
-  if (PROVIDERS_WITH_LIVE_USAGE_EVENTS.has(provider)) {
+  if (provider && PROVIDERS_WITH_LIVE_USAGE_EVENTS.has(provider.provider)) {
     return {
       title: "Usage",
       lines: ["No live quota data yet. Start a turn with this provider to populate limits."],
@@ -919,7 +940,9 @@ export function GeneralSettingsPanel() {
       (provider) => provider.liveProvider?.auth.status === "authenticated",
     ).length;
     const liveUsage = providerCards.filter(
-      (provider) => latestProviderUsageByProvider[provider.provider] !== undefined,
+      (provider) =>
+        provider.liveProvider?.usageLimits?.available ||
+        latestProviderUsageByProvider[provider.provider] !== undefined,
     ).length;
 
     return { total, ready, authenticated, liveUsage };
@@ -1342,7 +1365,10 @@ export function GeneralSettingsPanel() {
             <div className="grid gap-2 lg:grid-cols-2">
               {providerCards.map((providerCard) => {
                 const usageSnapshot = latestProviderUsageByProvider[providerCard.provider];
-                const usageSummary = getProviderUsageSummary(providerCard.provider, usageSnapshot);
+                const usageSummary = getProviderUsageSummary(
+                  providerCard.liveProvider,
+                  usageSnapshot,
+                );
                 const providerDisplayName =
                   providerCard.liveProvider?.displayName?.trim() ||
                   providerCard.title ||
