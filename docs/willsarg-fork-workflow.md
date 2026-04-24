@@ -92,7 +92,7 @@ If part of a change is generic and could reasonably go upstream:
 For a fresh coding session, this should be enough:
 
 ```text
-Look at /Users/will/Documents/Github/willsarg/t3code-willsarg and follow AGENTS.md plus docs/willsarg-fork-workflow.md.
+Look at /Users/will/Documents/Github/willsarg/t3code-willsarg and follow AGENTS.md, docs/dev-bootstrap.md, and docs/willsarg-fork-workflow.md.
 ```
 
 ## Decision Rule

@@ -52,6 +52,7 @@ Observability guide: [docs/observability.md](./docs/observability.md)
 If you are working in Will's fork locally, read these first:
 
 - [AGENTS.md](./AGENTS.md)
+- [docs/dev-bootstrap.md](./docs/dev-bootstrap.md)
 - [docs/willsarg-fork-workflow.md](./docs/willsarg-fork-workflow.md)
 - [docs/fork-roadmap.md](./docs/fork-roadmap.md)
 

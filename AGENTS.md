@@ -21,6 +21,7 @@ First steps for every non-trivial task:
 3. Read this file and `docs/willsarg-fork-workflow.md`.
 4. Read only the files relevant to the task before editing.
 5. Prefer a new `feat/*` branch from `dev` for substantial work.
+6. If `bun` or `node` are missing, read `docs/dev-bootstrap.md` before trying to install dependencies or run checks.
 
 ## Task Completion Requirements
 
@@ -89,4 +90,5 @@ Use these as implementation references when designing protocol handling, UX flow
 
 - Upstream repo: https://github.com/pingdotgg/t3code
 - Fork workflow: `docs/willsarg-fork-workflow.md`
+- Bootstrap guide: `docs/dev-bootstrap.md`
 - Upstream is most likely to accept small, focused bug, reliability, and performance fixes. Keep that in mind when structuring changes.
